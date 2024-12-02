@@ -13,7 +13,7 @@ struct ContentView: View {
     @State var userLocation: CLLocationCoordinate2D?
     @State var userWalking: Timer?
     @State var count = 0
-    
+    @State var showRoute: Bool = false
     var vm = ViewModel()
     var body: some View {
         VStack {
@@ -30,17 +30,24 @@ struct ContentView: View {
                     Text("Stop Walk")
                     
                 }
+                Button {
+                    showRoute.toggle()
+                } label: {
+                    Text("Show Route")
+                    
+                }
             }
             
             Map {
                 if userLocation != nil {
                     Marker("User Point", image: "", coordinate: userLocation!)
                 }
-                MapPolyline(coordinates: vm.waypoints.map({ location in
-                    location.coordinate
-                }))
-                .stroke(.blue, lineWidth: 2)
-                
+                if showRoute {
+                    MapPolyline(coordinates: vm.waypoints.map({ location in
+                        location.coordinate
+                    }))
+                    .stroke(.blue, lineWidth: 2)
+                } 
             }
         }
         .padding()
