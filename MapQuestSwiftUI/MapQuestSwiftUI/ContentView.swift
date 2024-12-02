@@ -14,6 +14,7 @@ struct ContentView: View {
     @State var userWalking: Timer?
     @State var count = 0
     @State var showRoute: Bool = false
+    
     var vm = ViewModel()
     var body: some View {
         VStack {
@@ -36,11 +37,25 @@ struct ContentView: View {
                     Text("Show Route")
                     
                 }
+                
             }
             
             Map {
+                
                 if userLocation != nil {
-                    Marker("User Point", image: "", coordinate: userLocation!)
+//                    Marker("User Point", image: "userImage", coordinate: userLocation!)
+                    Annotation("Red Panda", coordinate: userLocation!) {
+                        VStack(spacing: 0) {
+                            Image("userImage")
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 50, height: 50)
+                                .clipShape(.circle)
+                                
+                            Color.black.frame(width: 2, height: 8)
+                        }
+                    }
+                    
                 }
                 if showRoute {
                     MapPolyline(coordinates: vm.waypoints.map({ location in
