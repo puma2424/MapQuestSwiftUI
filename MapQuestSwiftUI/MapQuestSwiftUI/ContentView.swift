@@ -29,14 +29,19 @@ struct ContentView: View {
                     
                 }
                 Button {
-                    showRoute.toggle()
+                    vm.userLocationDict = [:]
+                    vm.userImages = [:]
+                    vm.userTimer.keys.forEach {
+                        vm.userTimer[$0]?.invalidate()
+                        vm.userTimer[$0] = nil
+                    }
                 } label: {
-                    Text("Show Route")
+                    Text("Remove All User")
                     
                 }
                 
             }
-            MapViewRepresentable(userAnnotations: $vm.userLocationDict)
+            MapViewRepresentable(userAnnotations: $vm.userLocationDict, userImages: $vm.userImages)
         }
         .padding()
     }
@@ -49,20 +54,24 @@ struct ContentView: View {
 
 class ViewModel: ObservableObject {
     private let parser = GPXParser()
-    let waypoints: [CLLocation]
+    
     @Published var userLocationDict: [String: CLLocation]
+    @Published var userImages: [String: UIImage]
+    let waypoints: [CLLocation]
     var userTimer: [String: Timer]
     var userWalking: [String: Int]
     
-    let user = ["RedPanda", "Puma", "Ray", "Cindy", "Jason", "Ray", "Hydee", "Luna", "Jenny"]
+    let user = ["RedPanda", "Ray", "Cindy", "Jason", "Ray", "Hydee", "Jenny", "Antita", "Chris Tang", "Fi", "Tree"]
     init() {
         waypoints = parser.parse(data: gpxData)
         userLocationDict = [:]
         userWalking = [:]
         userTimer = [:]
+        userImages = [:]
     }
     func addUserWalking() {
-        let randomName = user.randomElement()!
+        
+        let randomName = userLocationDict.keys.isEmpty ? "Tree" : user.randomElement()!
         let startCount = (0...waypoints.count).randomElement()!
         
         if userTimer[randomName] != nil {
@@ -71,15 +80,23 @@ class ViewModel: ObservableObject {
             userTimer[randomName] = nil
         }
         userWalking[randomName] = startCount
-        
+        userLocationDict[randomName] =  waypoints[userWalking[randomName] ?? 0]
+        userImages[randomName] = UIImage(named: randomName) ?? .init(systemName: "person")
         let timer =  Timer.scheduledTimer(withTimeInterval: 1, repeats: true, block: { [weak self] _ in
             guard let self else { return }
-            if userWalking[randomName] ?? waypoints.count < waypoints.count {
-                userLocationDict[randomName] = waypoints[userWalking[randomName] ?? 0]
-                userWalking[randomName]? += 1
-                
-            }
+            updateUserLocation(name: randomName)
+            
         })
         userTimer[randomName] = timer
+    }
+    
+    func updateUserLocation(name: String) {
+        DispatchQueue.main.async {
+            if let walkingIndex = self.userWalking[name], walkingIndex < self.waypoints.count {
+                // 更新座標
+                self.userLocationDict[name] = self.waypoints[walkingIndex]
+                self.userWalking[name]? += 1
+            }
+        }
     }
 }
