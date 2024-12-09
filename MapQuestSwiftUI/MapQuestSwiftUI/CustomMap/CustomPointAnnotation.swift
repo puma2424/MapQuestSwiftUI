@@ -9,6 +9,11 @@ import Foundation
 import MapKit
 
 class CustomPointAnnotation: MKPointAnnotation {
+    deinit {
+        print("---------------------- CustomPointAnnotation ----------------------")
+        print("☠️ \(user.name) will dead")
+        print("deinit")
+    }
     // 用戶
     var user: User
     

@@ -59,7 +59,10 @@ struct ContentView: View {
         ) {
             ForEach(vm.users.keys.sorted() , id: \.self) { user in
                 Button("\(user)", role: .destructive) {
+                    print("---------------ContentView----------------")
                     print("🚮 Remove \(user)")
+                    vm.removeUser(name: user)
+                    print("-------------------------------")
                 }
             }
         }
@@ -80,7 +83,7 @@ class ViewModel: ObservableObject {
     let waypoints: [CLLocation]
     var userTimer: [String: Timer] = [:]
     
-    let userNameArr = ["RedPanda", "Ray", "Cindy", "Jason", "Ray", "Hydee", "Jenny", "Antita", "Chris Tang", "Fi", "Tree"]
+    let userNameArr = ["RedPanda", "Ray", "Cindy", "Jason", "Hydee", "Jenny", "Antita", "Chris Tang", "Fi", "Tree"]
     var userNumber: Int = 0
     
     init() {
@@ -90,6 +93,12 @@ class ViewModel: ObservableObject {
         cancellable = userManager.$users
             .receive(on: DispatchQueue.main)
             .assign(to: \.users, on: self)
+    }
+    
+    func removeUser(name: String) {
+        userManager.removeUser(name: name)
+        userTimer[name]?.invalidate()
+        userTimer.removeValue(forKey: name)
     }
     
     func addUserWalking() {
@@ -110,7 +119,9 @@ class ViewModel: ObservableObject {
             
         })
         userTimer[newUserName] = timer
-        
+        print("-------------View Model-------------")
+        print("▶️ addUserWalking: \(newUserName)")
+        print("------------------------------------\n")
         userNumber += 1
     }
     

@@ -18,9 +18,7 @@ struct User {
 
 class UserManager: ObservableObject {
     @Published private(set) var users: [String: User] = [:]
-    private var userTimers: [String: Timer] = [:]
-    
-    let userRemoved = PassthroughSubject<User, Never>()
+//    private var userTimers: [String: Timer] = [:]
     
     func addUser(_ user: User) {
         users[user.name] = user
@@ -28,11 +26,10 @@ class UserManager: ObservableObject {
     
     func removeUser(name: String) {
         guard let user = users[name] else { return }
-        userRemoved.send(user)
         
         users.removeValue(forKey: name)
-        userTimers[name]?.invalidate()
-        userTimers.removeValue(forKey: name)
+//        userTimers[name]?.invalidate()
+//        userTimers.removeValue(forKey: name)
     }
     
     func updateUserLocation(userID: String, location: CLLocation, newIndex: Int) {
@@ -42,19 +39,19 @@ class UserManager: ObservableObject {
         users[userID] = user
     }
     
-    func startWalking(userID: String, waypoints: [CLLocation], onUpdate: @escaping (CLLocation) -> Void) {
-        guard users[userID] != nil else { return }
-        
-        userTimers[userID]?.invalidate()
-        userTimers[userID] = Timer.scheduledTimer(withTimeInterval: 1, repeats: true, block: { [weak self] _ in
-            guard let self = self, var user = self.users[userID] else { return }
-            let newIndex = (user.walkingIndex + 1) % waypoints.count
-            user.location = waypoints[newIndex]
-            user.walkingIndex = newIndex
-            self.users[userID] = user
-            onUpdate(user.location)
-        })
-    }
+//    func startWalking(userID: String, waypoints: [CLLocation], onUpdate: @escaping (CLLocation) -> Void) {
+//        guard users[userID] != nil else { return }
+//        
+//        userTimers[userID]?.invalidate()
+//        userTimers[userID] = Timer.scheduledTimer(withTimeInterval: 1, repeats: true, block: { [weak self] _ in
+//            guard let self = self, var user = self.users[userID] else { return }
+//            let newIndex = (user.walkingIndex + 1) % waypoints.count
+//            user.location = waypoints[newIndex]
+//            user.walkingIndex = newIndex
+//            self.users[userID] = user
+//            onUpdate(user.location)
+//        })
+//    }
     
     func resetUsers() {
         users.removeAll()
