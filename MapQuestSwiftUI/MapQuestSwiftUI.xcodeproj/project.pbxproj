@@ -11,7 +11,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		FF242BF02CEC6B91008DF6AF /* MapQuestSwiftUI */ = {
+		FFCD717C2D06CC450078E115 /* MapQuestSwiftUI */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = MapQuestSwiftUI;
 			sourceTree = "<group>";
@@ -32,7 +32,7 @@
 		FF242BE52CEC6B91008DF6AF = {
 			isa = PBXGroup;
 			children = (
-				FF242BF02CEC6B91008DF6AF /* MapQuestSwiftUI */,
+				FFCD717C2D06CC450078E115 /* MapQuestSwiftUI */,
 				FF242BEF2CEC6B91008DF6AF /* Products */,
 			);
 			sourceTree = "<group>";
@@ -61,7 +61,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				FF242BF02CEC6B91008DF6AF /* MapQuestSwiftUI */,
+				FFCD717C2D06CC450078E115 /* MapQuestSwiftUI */,
 			);
 			name = MapQuestSwiftUI;
 			packageProductDependencies = (

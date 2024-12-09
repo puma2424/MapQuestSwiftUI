@@ -77,8 +77,7 @@ extension UIMapView: MKMapViewDelegate {
 
 struct MapViewRepresentable: UIViewRepresentable {
     
-    @Binding var userAnnotations: [String: CLLocation]
-    @Binding var userImages: [String: UIImage]
+    @Binding var userAnnotations: [String: User]
     func makeUIView(context: Context) -> UIMapView {
         let uiMapView = UIMapView()
         return uiMapView
@@ -90,20 +89,17 @@ struct MapViewRepresentable: UIViewRepresentable {
         var sumLat: CLLocationDegrees = 0
         var sumLng: CLLocationDegrees = 0
         
-        userAnnotations.forEach { (name, location) in
+        userAnnotations.forEach { (name, user) in
             
             if uiView.userAnnotations[name] == nil {
-                let image = userImages[name]
                 uiView.addUser(name: name,
-                               customPointAnnotation: .init(coordinate: location.coordinate,
-                                                            userImage: image,
-                                                            title: name))
+                               customPointAnnotation: .init(coordinate: user.location.coordinate, user: user))
             } else {
-                uiView.updateUserLocation(userName: name, location.coordinate)
+                uiView.updateUserLocation(userName: name, user.location.coordinate)
             }
-            sumLat += location.coordinate.latitude
-            sumLng += location.coordinate.longitude
-            
+//            sumLat += location.coordinate.latitude
+//            sumLng += location.coordinate.longitude
+//            
             
         }
         
@@ -114,16 +110,16 @@ struct MapViewRepresentable: UIViewRepresentable {
 //        uiView.centerMapOnLocation(coordinate: averageCoordinate)
     }
     
-    func updateUserImages(_ uiView: UIMapView, user name: String, imageIs userImages: UIImage) {
-        uiView.userAnnotations[name]?.userImage = userImages
-    }
+//    func updateUserImages(_ uiView: UIMapView, user name: String, imageIs userImages: UIImage) {
+//        uiView.userAnnotations[name]?.userImage = userImages
+//    }
 }
 
     
 #Preview {
     @State var userAnnotations: [String : CLLocation] = ["aa": .init(latitude: 25.059093026560458, longitude: 121.52061640290475)]
     @State var userImages: [String : UIImage] = ["aa": .redPanda]
-    MapViewRepresentable(userAnnotations: $userAnnotations, userImages: $userImages)
+//    MapViewRepresentable(userAnnotations: $userAnnotations)
 }
 //25.059093026560458
 //121.52061640290475

@@ -7,6 +7,7 @@
 
 import SwiftUI
 import MapKit
+import Combine
 
 struct ContentView: View {
     @State var showRoute: Bool = false
@@ -23,7 +24,6 @@ struct ContentView: View {
                 }
                 Button {
                     vm.userTimer = [:]
-                    vm.userWalking = [:]
                     
                 } label: {
                     Text("Stop Walk")
@@ -31,17 +31,17 @@ struct ContentView: View {
                 }
             }
             HStack {
-                Button {
-                    vm.userLocationDict = [:]
-                    vm.userImages = [:]
-                    vm.userTimer.keys.forEach {
-                        vm.userTimer[$0]?.invalidate()
-                        vm.userTimer[$0] = nil
-                    }
-                } label: {
-                    Text("Remove All User")
-                    
-                }
+//                Button {
+//                    vm.userLocationDict = [:]
+//                    vm.userImages = [:]
+//                    vm.userTimer.keys.forEach {
+//                        vm.userTimer[$0]?.invalidate()
+//                        vm.userTimer[$0] = nil
+//                    }
+//                } label: {
+//                    Text("Remove All User")
+//                    
+//                }
                 
                 Button {
                     isShowingDialog.toggle()
@@ -50,17 +50,16 @@ struct ContentView: View {
                     
                 }
             }
-            MapViewRepresentable(userAnnotations: $vm.userLocationDict, userImages: $vm.userImages)
+            MapViewRepresentable(userAnnotations: $vm.users)
         }
         .padding()
         .confirmationDialog(
             "Permanently erase the items in the Trash?",
             isPresented: $isShowingDialog
         ) {
-            ForEach(vm.userLocationDict.keys.sorted(), id: \.self) { user in
+            ForEach(vm.users.keys.sorted() , id: \.self) { user in
                 Button("\(user)", role: .destructive) {
                     print("🚮 Remove \(user)")
-                    print("📍 User's Location: \(String(describing: vm.userLocationDict[user]?.coordinate))")
                 }
             }
         }
@@ -73,49 +72,55 @@ struct ContentView: View {
 
 class ViewModel: ObservableObject {
     private let parser = GPXParser()
+    private var cancellable: AnyCancellable?
     
-    @Published var userLocationDict: [String: CLLocation]
-    @Published var userImages: [String: UIImage]
+    @Published var userManager = UserManager()
+    @Published var users: [String: User] = [:]
+    
     let waypoints: [CLLocation]
-    var userTimer: [String: Timer]
-    var userWalking: [String: Int]
+    var userTimer: [String: Timer] = [:]
     
-    let user = ["RedPanda", "Ray", "Cindy", "Jason", "Ray", "Hydee", "Jenny", "Antita", "Chris Tang", "Fi", "Tree"]
+    let userNameArr = ["RedPanda", "Ray", "Cindy", "Jason", "Ray", "Hydee", "Jenny", "Antita", "Chris Tang", "Fi", "Tree"]
+    var userNumber: Int = 0
+    
     init() {
         waypoints = parser.parse(data: gpxData)
-        userLocationDict = [:]
-        userWalking = [:]
+        userManager.resetUsers()
         userTimer = [:]
-        userImages = [:]
+        cancellable = userManager.$users
+            .receive(on: DispatchQueue.main)
+            .assign(to: \.users, on: self)
     }
     
     func addUserWalking() {
         
-        let randomName = userLocationDict.keys.isEmpty ? "Tree" : user.randomElement()!
+        let newUserName = userNameArr[ userNumber % userNameArr.count ]
         let startCount = (0...waypoints.count).randomElement()!
         
-        if userTimer[randomName] != nil {
-            userWalking[randomName] = nil
-            userTimer[randomName]?.invalidate()
-            userTimer[randomName] = nil
+        if userTimer[newUserName] != nil {
+            userTimer[newUserName]?.invalidate()
+            userTimer.removeValue(forKey: newUserName)
         }
-        userWalking[randomName] = startCount
-        userLocationDict[randomName] =  waypoints[userWalking[randomName] ?? 0]
-        userImages[randomName] = UIImage(named: randomName) ?? .init(systemName: "person")
+        
+        userManager.addUser(.init(name: newUserName, image: UIImage(named: newUserName) ?? .init(systemName: "person"), location: waypoints[startCount], walkingIndex: startCount))
+        
         let timer =  Timer.scheduledTimer(withTimeInterval: 1, repeats: true, block: { [weak self] _ in
             guard let self else { return }
-            updateUserLocation(name: randomName)
+            updateUserLocation(name: newUserName)
             
         })
-        userTimer[randomName] = timer
+        userTimer[newUserName] = timer
+        
+        userNumber += 1
     }
     
     func updateUserLocation(name: String) {
-        DispatchQueue.main.async {
-            if let walkingIndex = self.userWalking[name], walkingIndex < self.waypoints.count {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            if let walkingIndex = self.userManager.users[name]?.walkingIndex, walkingIndex < self.waypoints.count {
+                let newIndex = (walkingIndex + 1) % self.waypoints.count
                 // 更新座標
-                self.userLocationDict[name] = self.waypoints[walkingIndex]
-                self.userWalking[name]? += 1
+                self.userManager.updateUserLocation(userID: name, location: self.waypoints[newIndex], newIndex: newIndex)
             }
         }
     }

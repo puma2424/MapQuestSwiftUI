@@ -7,18 +7,17 @@
 
 import Foundation
 import MapKit
+
 class CustomPointAnnotation: MKPointAnnotation {
-    // 用戶圖片
-    var userImage: UIImage?
-    
-    // 默認初始化
-    override init() {
-        super.init()
-    }
+    // 用戶
+    var user: User
     
     // 自定義初始化方法
-    init(coordinate: CLLocationCoordinate2D, userImage: UIImage? = nil, title: String? = nil, subtitle: String? = nil) {
-        self.userImage = userImage
+    init(coordinate: CLLocationCoordinate2D, user: User, title: String? = nil, subtitle: String? = nil) {
+        self.user = user
         super.init()
+        self.coordinate = user.location.coordinate
+        self.title = title
+        self.subtitle = subtitle
     }
 }

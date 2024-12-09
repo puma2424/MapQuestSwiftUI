@@ -38,7 +38,7 @@ class CustomAnnotationView: MKAnnotationView {
     @MainActor
     func setupUserImage(annotation: CustomPointAnnotation ) {
         // 設置圖片
-        if let userImage = annotation.userImage {
+        if let userImage = annotation.user.image {
             let imageSize: CGFloat = 35  // 設定圖片大小
             
             // 創建 UIImageView
