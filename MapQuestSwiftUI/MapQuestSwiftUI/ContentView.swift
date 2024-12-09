@@ -11,6 +11,7 @@ import MapKit
 struct ContentView: View {
     @State var showRoute: Bool = false
     @ObservedObject var vm = ViewModel()
+    @State var isShowingDialog: Bool = false
     
     var body: some View {
         VStack {
@@ -28,6 +29,8 @@ struct ContentView: View {
                     Text("Stop Walk")
                     
                 }
+            }
+            HStack {
                 Button {
                     vm.userLocationDict = [:]
                     vm.userImages = [:]
@@ -40,12 +43,28 @@ struct ContentView: View {
                     
                 }
                 
+                Button {
+                    isShowingDialog.toggle()
+                } label: {
+                    Text("Remove User")
+                    
+                }
             }
             MapViewRepresentable(userAnnotations: $vm.userLocationDict, userImages: $vm.userImages)
         }
         .padding()
+        .confirmationDialog(
+            "Permanently erase the items in the Trash?",
+            isPresented: $isShowingDialog
+        ) {
+            ForEach(vm.userLocationDict.keys.sorted(), id: \.self) { user in
+                Button("\(user)", role: .destructive) {
+                    print("🚮 Remove \(user)")
+                    print("📍 User's Location: \(String(describing: vm.userLocationDict[user]?.coordinate))")
+                }
+            }
+        }
     }
-    
 }
 
 #Preview {
@@ -69,6 +88,7 @@ class ViewModel: ObservableObject {
         userTimer = [:]
         userImages = [:]
     }
+    
     func addUserWalking() {
         
         let randomName = userLocationDict.keys.isEmpty ? "Tree" : user.randomElement()!
