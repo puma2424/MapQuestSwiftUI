@@ -46,8 +46,6 @@ class UIMapView: UIView {
         guard let userAnnotation = userAnnotations[userName] else { return }
         UIView.animate(withDuration: 1.0, animations: {
             userAnnotation.coordinate = location
-            print(">>> updateUserLocation at UIMapView")
-            print(userAnnotation.coordinate)
         })
     }
     
