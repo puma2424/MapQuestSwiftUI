@@ -51,14 +51,14 @@ struct ContentView: View {
                     
                 }
             }
-            MapViewRepresentable(userAnnotations: $vm.users)
+            MapViewRepresentable(mapOtherUsers: $vm.mapOtherUsers, mapCurrentUser: $vm.mapCurrentUser, route: $vm.currentUserRoute)
         }
         .padding()
         .confirmationDialog(
             "Permanently erase the items in the Trash?",
             isPresented: $isShowingDialog
         ) {
-            ForEach(vm.users.keys.sorted() , id: \.self) { user in
+            ForEach(vm.mapOtherUsers.keys.sorted() , id: \.self) { user in
                 Button("\(user)", role: .destructive) {
                     print("---------------ContentView----------------")
                     print("🚮 Remove \(user)")
@@ -80,7 +80,9 @@ class ViewModel: NSObject, ObservableObject {
     private let locationManager = CLLocationManager()
     
     @Published var userManager = UserManager()
-    @Published var users: [String: User] = [:]
+    @Published var mapOtherUsers: [String: User] = [:]
+    @Published var mapCurrentUser: User?
+    @Published var currentUserRoute: [CLLocationCoordinate2D] = []
     
     let waypoints: [CLLocation]
     var userTimer: [String: Timer] = [:]
@@ -96,7 +98,7 @@ class ViewModel: NSObject, ObservableObject {
         userTimer = [:]
         cancellable = userManager.$users
             .receive(on: DispatchQueue.main)
-            .assign(to: \.users, on: self)
+            .assign(to: \.mapOtherUsers, on: self)
         setupLocationManager()
     }
     
@@ -134,7 +136,7 @@ class ViewModel: NSObject, ObservableObject {
     }
     
     func addUserToMap(userName: String, location: CLLocation, walkingIndex: Int? = nil) {
-        userManager.addUser(.init(name: userName, image: UIImage(named: userName) ?? .init(systemName: "person"), location: location, walkingIndex: walkingIndex))
+        userManager.addUser(.init(name: userName, image: UIImage(named: userName) ?? .init(systemName: "person"), location: location, walkingIndex: walkingIndex ?? 0))
         
         
         print("-------------View Model-------------")
@@ -150,6 +152,7 @@ class ViewModel: NSObject, ObservableObject {
                 let newIndex = (walkingIndex + 1) % self.waypoints.count
                 // 更新座標
                 self.userManager.updateUserLocation(userID: name, location: self.waypoints[newIndex], newIndex: newIndex)
+                print(self.userManager.users[name]?.location)
             }
         }
     }
@@ -159,20 +162,21 @@ extension ViewModel: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager,
                          didUpdateLocations locations: [CLLocation]) {
         let userLocation: CLLocation = locations[0] // The first location in the array
-        if users["Puma"] == nil {
-            addUserToMap(userName: "Puma", location: userLocation)
-        }else {
-            userManager.updateUserLocation(userID: "Puma", location: userLocation, newIndex: 0)
-        }
         
-        print("location: \(userLocation.coordinate.latitude), \(userLocation.coordinate.longitude)")
-    }
-
-        func locationManager(_ manager: CLLocationManager,
-                             didFailWithError error: Error) {
-            
-            print("---ViewModel didFailWithError---")
-            print(error.localizedDescription)
-            print("-------------------------------\n")
+        if mapCurrentUser == nil {
+            mapCurrentUser = .init(name: "Puma", location: userLocation)
+            currentUserRoute.append(userLocation.coordinate)
+        }else {
+            mapCurrentUser?.location = userLocation
+            currentUserRoute.append(userLocation.coordinate)
         }
+    }
+    
+    func locationManager(_ manager: CLLocationManager,
+                         didFailWithError error: Error) {
+        
+        print("---ViewModel didFailWithError---")
+        print(error.localizedDescription)
+        print("-------------------------------\n")
+    }
 }

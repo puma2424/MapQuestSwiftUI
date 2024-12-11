@@ -18,7 +18,7 @@ class CustomPointAnnotation: MKPointAnnotation {
     var user: User
     
     // 自定義初始化方法
-    init(coordinate: CLLocationCoordinate2D, user: User, title: String? = nil, subtitle: String? = nil) {
+    init(user: User, title: String? = nil, subtitle: String? = nil) {
         self.user = user
         super.init()
         self.coordinate = user.location.coordinate

@@ -14,12 +14,12 @@ import Combine
 
 class UIMapView: UIView {
     var mapView: MKMapView!
-    var userAnnotations: [String: CustomPointAnnotation] = [:]
-    var pinImage: [String: UIImage?] = [:]
+    var mapOtherUsersAnnotation: [String: CustomPointAnnotation] = [:]
+    var mapCurrentUserAnnotation: CustomPointAnnotation?
     
-    var mainRoute: [CLLocation] = [] {
+    var mainRoute: [CLLocationCoordinate2D] = [] {
         didSet {
-            updateRoute(mainRoute.map(\.coordinate))
+            updateRoute(mainRoute)
         }
     }
     
@@ -54,11 +54,32 @@ class UIMapView: UIView {
         routePolyline = polyline
     }
     
-    func addUser(name: String, customPointAnnotation: CustomPointAnnotation) {
-        guard userAnnotations[name] == nil else { return }
-        userAnnotations[name] = customPointAnnotation
+    @MainActor
+    func addMapCurrentUser(customPointAnnotation: CustomPointAnnotation) {
+        mapCurrentUserAnnotation = customPointAnnotation
+        mapView.addAnnotation(customPointAnnotation)
+        update(customPointAnnotation: customPointAnnotation)
+        print("--------------UIMapView------------")
+        print("+ Add current user annotation: \(customPointAnnotation)")
+        print("+ Add user annotation: \(customPointAnnotation)")
+        print("------------------------------------\n")
+    }
+    
+    @MainActor
+    func addMapOtherUsers(name: String, customPointAnnotation: CustomPointAnnotation) {
+        guard mapOtherUsersAnnotation[name] == nil else { return }
+        mapOtherUsersAnnotation[name] = customPointAnnotation
         customPointAnnotation.title = name
         mapView.addAnnotation(customPointAnnotation)
+        update(customPointAnnotation: customPointAnnotation)
+        print("--------------UIMapView------------")
+        print("+ Add user name: \(name)")
+        print("+ Add user annotation: \(customPointAnnotation)")
+        print("------------------------------------\n")
+    }
+    
+    @MainActor
+    func update(customPointAnnotation: CustomPointAnnotation) {
         // 強制刷新地圖標註
         if let customView = mapView.annotations.first(where: { annotation in
             guard let customAnnotation = annotation as? CustomPointAnnotation else { return false }
@@ -66,14 +87,17 @@ class UIMapView: UIView {
         }) as? CustomAnnotationView {
             customView.updateContent(for: customPointAnnotation)
         }
-        print("--------------UIMapView------------")
-        print("+ Add user name: \(name)")
-        print("+ Add user annotation: \(customPointAnnotation)")
-        print("------------------------------------\n")
     }
     @MainActor
-    func updateUserLocation(userName: String, _ location: CLLocationCoordinate2D) {
-        guard let userAnnotation = userAnnotations[userName] else { return }
+    func updateOtherUsersLocation(userName: String, to location: CLLocationCoordinate2D) {
+        guard let userAnnotation = mapOtherUsersAnnotation[userName] else { return }
+        UIView.animate(withDuration: 1.0, animations: {
+            userAnnotation.coordinate = location
+        })
+    }
+    
+    @MainActor
+    func updateUserLocation(userAnnotation: MKPointAnnotation, to location: CLLocationCoordinate2D) {
         UIView.animate(withDuration: 1.0, animations: {
             userAnnotation.coordinate = location
         })
@@ -85,11 +109,11 @@ class UIMapView: UIView {
     }
     
     func removeAnnotation(name: String) {
-        guard let userAnnotation = userAnnotations[name] else { return }
+        guard let userAnnotation = mapOtherUsersAnnotation[name] else { return }
         
         mapView.removeAnnotation(userAnnotation)
         
-        userAnnotations.removeValue(forKey: name)
+        mapOtherUsersAnnotation.removeValue(forKey: name)
     }
 }
 
@@ -137,7 +161,10 @@ extension UIMapView: MKMapViewDelegate {
 
 struct MapViewRepresentable: UIViewRepresentable {
     
-    @Binding var userAnnotations: [String: User]
+    @Binding var mapOtherUsers: [String: User]
+    @Binding var mapCurrentUser: User?
+    @Binding var route: [CLLocationCoordinate2D]
+    
     func makeUIView(context: Context) -> UIMapView {
         let uiMapView = UIMapView()
         return uiMapView
@@ -145,45 +172,57 @@ struct MapViewRepresentable: UIViewRepresentable {
     
     func updateUIView(_ uiView: UIMapView, context: Context) {
         removeUser(uiView)
-        
-        guard !userAnnotations.isEmpty else { return }
-        
+        setCurrentUser(uiView)
+        setupOtherUsers(uiView)
+        uiView.mainRoute = route
+    }
+    
+    func moveToOtherUsersCenter(_ uiView: UIMapView) {
+        guard !mapOtherUsers.isEmpty else { return }
         var sumLat: CLLocationDegrees = 0
         var sumLng: CLLocationDegrees = 0
-        
-        userAnnotations.forEach { (name, user) in
-            if name == "Puma" {
-                uiView.mainRoute.append(user.location)
-            }
-            if uiView.userAnnotations[name] == nil {
-                uiView.addUser(name: name,
-                               customPointAnnotation: .init(coordinate: user.location.coordinate, user: user))
+        mapOtherUsers.forEach { (name, user) in
+            sumLat += user.location.coordinate.latitude
+            sumLng += user.location.coordinate.longitude
+            
+        }
+        let averageCoordinate = CLLocationCoordinate2D(
+            latitude: sumLat / Double(mapOtherUsers.count),
+            longitude: sumLng / Double(mapOtherUsers.count)
+        )
+        uiView.centerMapOnLocation(coordinate: averageCoordinate)
+    }
+    
+    func setupOtherUsers(_ uiView: UIMapView) {
+        guard !mapOtherUsers.isEmpty else { return }
+        mapOtherUsers.forEach { (name, user) in
+            if uiView.mapOtherUsersAnnotation[name] == nil {
+                uiView.addMapOtherUsers(name: name,
+                               customPointAnnotation: .init(user: user))
                 print("-------Map View Representable------")
                 print("▶️ add name: \(name)")
                 print("▶️ add User: \(user)")
                 print("------------------------------------\n")
             } else {
-                uiView.updateUserLocation(userName: name, user.location.coordinate)
+                uiView.updateOtherUsersLocation(userName: name, to: user.location.coordinate)
             }
-//            sumLat += location.coordinate.latitude
-//            sumLng += location.coordinate.longitude
-//            
-            
         }
-        let averageCoordinate = CLLocationCoordinate2D(
-            latitude: sumLat / Double(userAnnotations.count),
-            longitude: sumLng / Double(userAnnotations.count)
-        )
-        if let location =  userAnnotations["Puma"]?.location.coordinate {
-            uiView.centerMapOnLocation(coordinate: location)
+    }
+    
+    func setCurrentUser(_ uiView: UIMapView) {
+        guard let mapCurrentUser else { return }
+        if let userAnnotation = uiView.mapCurrentUserAnnotation  {
+            uiView.updateUserLocation(userAnnotation: userAnnotation, to: mapCurrentUser.location.coordinate)
+        }else {
+            uiView.addMapCurrentUser(customPointAnnotation: .init(user: mapCurrentUser))
         }
     }
     
     
     func removeUser(_ uiView: UIMapView) {
         // 移除地圖中不再存在的用戶
-        let existingUserKeys = Set(uiView.userAnnotations.keys)
-        let currentUserKeys = Set(userAnnotations.keys)
+        let existingUserKeys = Set(uiView.mapOtherUsersAnnotation.keys)
+        let currentUserKeys = Set(mapOtherUsers.keys)
         
         let removedUsers = existingUserKeys.subtracting(currentUserKeys)
         if !removedUsers.isEmpty {
@@ -203,9 +242,11 @@ struct MapViewRepresentable: UIViewRepresentable {
 
     
 #Preview {
-    @State var userAnnotations: [String : User] = ["aa": .init(name: "ya", location: .init(latitude: 25.059093026560458, longitude: 121.52061640290475), walkingIndex: 0)]
+    @State var mapOtherUsers: [String : User] = ["aa": .init(name: "ya", location: .init(latitude: 25.059093026560458, longitude: 121.52061640290475), walkingIndex: 0)]
+    @State var mapCurrentUser: User? = .init(name: "Puma", location: .init(latitude: 25.059093026560458, longitude: 121.52061640290475), walkingIndex: 0)
+    @State var userRoute: [CLLocationCoordinate2D] = []
     
-    MapViewRepresentable(userAnnotations: $userAnnotations)
+    MapViewRepresentable(mapOtherUsers: $mapOtherUsers, mapCurrentUser: $mapCurrentUser, route: $userRoute)
     
 }
 //25.059093026560458

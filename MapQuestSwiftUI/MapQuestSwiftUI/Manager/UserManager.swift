@@ -13,7 +13,7 @@ struct User {
     let name: String
     var image: UIImage?
     var location: CLLocation
-    var walkingIndex: Int?
+    var walkingIndex: Int = 0
 }
 
 class UserManager: ObservableObject {
