@@ -152,7 +152,7 @@ struct MapViewRepresentable: UIViewRepresentable {
         var sumLng: CLLocationDegrees = 0
         
         userAnnotations.forEach { (name, user) in
-            if name == userAnnotations.keys.first {
+            if name == "Puma" {
                 uiView.mainRoute.append(user.location)
             }
             if uiView.userAnnotations[name] == nil {
@@ -174,7 +174,9 @@ struct MapViewRepresentable: UIViewRepresentable {
             latitude: sumLat / Double(userAnnotations.count),
             longitude: sumLng / Double(userAnnotations.count)
         )
-//        uiView.centerMapOnLocation(coordinate: averageCoordinate)
+        if let location =  userAnnotations["Puma"]?.location.coordinate {
+            uiView.centerMapOnLocation(coordinate: location)
+        }
     }
     
     

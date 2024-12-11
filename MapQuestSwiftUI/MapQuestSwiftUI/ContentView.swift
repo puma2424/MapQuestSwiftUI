@@ -8,6 +8,7 @@
 import SwiftUI
 import MapKit
 import Combine
+import CoreLocation
 
 struct ContentView: View {
     @State var showRoute: Bool = false
@@ -18,7 +19,7 @@ struct ContentView: View {
         VStack {
             HStack {
                 Button {
-                    vm.addUserWalking()
+                    vm.addOtherUser()
                 } label: {
                     Text("Start Walk")
                 }
@@ -73,9 +74,10 @@ struct ContentView: View {
     ContentView()
 }
 
-class ViewModel: ObservableObject {
+class ViewModel: NSObject, ObservableObject {
     private let parser = GPXParser()
     private var cancellable: AnyCancellable?
+    private let locationManager = CLLocationManager()
     
     @Published var userManager = UserManager()
     @Published var users: [String: User] = [:]
@@ -86,13 +88,22 @@ class ViewModel: ObservableObject {
     let userNameArr = ["RedPanda", "Ray", "Cindy", "Jason", "Hydee", "Jenny", "Antita", "Chris Tang", "Fi", "Tree"]
     var userNumber: Int = 0
     
-    init() {
+    override init() {
         waypoints = parser.parse(data: gpxData)
+        userTimer = [:]
+        super.init()
         userManager.resetUsers()
         userTimer = [:]
         cancellable = userManager.$users
             .receive(on: DispatchQueue.main)
             .assign(to: \.users, on: self)
+        setupLocationManager()
+    }
+    
+    func setupLocationManager() {
+        locationManager.delegate = self
+        locationManager.requestWhenInUseAuthorization() // 請求使用使用者位置的許可權
+        locationManager.startUpdatingLocation() // 開始更新使用者的位置
     }
     
     func removeUser(name: String) {
@@ -101,8 +112,7 @@ class ViewModel: ObservableObject {
         userTimer.removeValue(forKey: name)
     }
     
-    func addUserWalking() {
-        
+    func addOtherUser() {
         let newUserName = userNameArr[ userNumber % userNameArr.count ]
         let startCount = (0...waypoints.count).randomElement()!
         
@@ -110,8 +120,9 @@ class ViewModel: ObservableObject {
             userTimer[newUserName]?.invalidate()
             userTimer.removeValue(forKey: newUserName)
         }
+        let location = waypoints[startCount]
         
-        userManager.addUser(.init(name: newUserName, image: UIImage(named: newUserName) ?? .init(systemName: "person"), location: waypoints[startCount], walkingIndex: startCount))
+        addUserToMap(userName: newUserName, location: location)
         
         let timer =  Timer.scheduledTimer(withTimeInterval: 1, repeats: true, block: { [weak self] _ in
             guard let self else { return }
@@ -119,10 +130,17 @@ class ViewModel: ObservableObject {
             
         })
         userTimer[newUserName] = timer
-        print("-------------View Model-------------")
-        print("▶️ addUserWalking: \(newUserName)")
-        print("------------------------------------\n")
         userNumber += 1
+    }
+    
+    func addUserToMap(userName: String, location: CLLocation, walkingIndex: Int? = nil) {
+        userManager.addUser(.init(name: userName, image: UIImage(named: userName) ?? .init(systemName: "person"), location: location, walkingIndex: walkingIndex))
+        
+        
+        print("-------------View Model-------------")
+        print("▶️ addUserWalking: \(userName)")
+        print("------------------------------------\n")
+        
     }
     
     func updateUserLocation(name: String) {
@@ -135,4 +153,26 @@ class ViewModel: ObservableObject {
             }
         }
     }
+}
+
+extension ViewModel: CLLocationManagerDelegate {
+    func locationManager(_ manager: CLLocationManager,
+                         didUpdateLocations locations: [CLLocation]) {
+        let userLocation: CLLocation = locations[0] // The first location in the array
+        if users["Puma"] == nil {
+            addUserToMap(userName: "Puma", location: userLocation)
+        }else {
+            userManager.updateUserLocation(userID: "Puma", location: userLocation, newIndex: 0)
+        }
+        
+        print("location: \(userLocation.coordinate.latitude), \(userLocation.coordinate.longitude)")
+    }
+
+        func locationManager(_ manager: CLLocationManager,
+                             didFailWithError error: Error) {
+            
+            print("---ViewModel didFailWithError---")
+            print(error.localizedDescription)
+            print("-------------------------------\n")
+        }
 }
