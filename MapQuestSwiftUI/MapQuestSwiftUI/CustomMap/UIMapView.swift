@@ -17,6 +17,13 @@ class UIMapView: UIView {
     var userAnnotations: [String: CustomPointAnnotation] = [:]
     var pinImage: [String: UIImage?] = [:]
     
+    var mainRoute: [CLLocation] = [] {
+        didSet {
+            updateRoute(mainRoute.map(\.coordinate))
+        }
+    }
+    
+    var routePolyline: MKPolyline?
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -33,6 +40,18 @@ class UIMapView: UIView {
         mapView.delegate = self
         mapView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         addSubview(mapView)
+    }
+    
+    func updateRoute(_ coordinates: [CLLocationCoordinate2D]) {
+        // 移除舊的路線
+        if let routePolyline = routePolyline {
+            mapView.removeOverlay(routePolyline)
+        }
+        
+        // 添加新的路線
+        let polyline = MKPolyline(coordinates: coordinates, count: coordinates.count)
+        mapView.addOverlay(polyline)
+        routePolyline = polyline
     }
     
     func addUser(name: String, customPointAnnotation: CustomPointAnnotation) {
@@ -104,6 +123,15 @@ extension UIMapView: MKMapViewDelegate {
             
             return annotationView
     }
+    func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            if let polyline = overlay as? MKPolyline {
+                let renderer = MKPolylineRenderer(polyline: polyline)
+                renderer.strokeColor = .blue
+                renderer.lineWidth = 3
+                return renderer
+            }
+            return MKOverlayRenderer(overlay: overlay)
+        }
     
 }
 
@@ -124,7 +152,9 @@ struct MapViewRepresentable: UIViewRepresentable {
         var sumLng: CLLocationDegrees = 0
         
         userAnnotations.forEach { (name, user) in
-            
+            if name == userAnnotations.keys.first {
+                uiView.mainRoute.append(user.location)
+            }
             if uiView.userAnnotations[name] == nil {
                 uiView.addUser(name: name,
                                customPointAnnotation: .init(coordinate: user.location.coordinate, user: user))
@@ -147,9 +177,6 @@ struct MapViewRepresentable: UIViewRepresentable {
 //        uiView.centerMapOnLocation(coordinate: averageCoordinate)
     }
     
-//    func updateUserImages(_ uiView: UIMapView, user name: String, imageIs userImages: UIImage) {
-//        uiView.userAnnotations[name]?.userImage = userImages
-//    }
     
     func removeUser(_ uiView: UIMapView) {
         // 移除地圖中不再存在的用戶
@@ -174,9 +201,10 @@ struct MapViewRepresentable: UIViewRepresentable {
 
     
 #Preview {
-    @State var userAnnotations: [String : CLLocation] = ["aa": .init(latitude: 25.059093026560458, longitude: 121.52061640290475)]
-    @State var userImages: [String : UIImage] = ["aa": .redPanda]
-//    MapViewRepresentable(userAnnotations: $userAnnotations)
+    @State var userAnnotations: [String : User] = ["aa": .init(name: "ya", location: .init(latitude: 25.059093026560458, longitude: 121.52061640290475), walkingIndex: 0)]
+    
+    MapViewRepresentable(userAnnotations: $userAnnotations)
+    
 }
 //25.059093026560458
 //121.52061640290475
