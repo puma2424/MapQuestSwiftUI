@@ -24,31 +24,16 @@ struct ContentView: View {
                     Text("Start Walk")
                 }
                 Button {
-                    vm.userTimer = [:]
-                    
-                } label: {
-                    Text("Stop Walk")
-                    
-                }
-            }
-            HStack {
-//                Button {
-//                    vm.userLocationDict = [:]
-//                    vm.userImages = [:]
-//                    vm.userTimer.keys.forEach {
-//                        vm.userTimer[$0]?.invalidate()
-//                        vm.userTimer[$0] = nil
-//                    }
-//                } label: {
-//                    Text("Remove All User")
-//                    
-//                }
-                
-                Button {
                     isShowingDialog.toggle()
                 } label: {
                     Text("Remove User")
                     
+                }
+                
+            }
+            HStack {
+                Button("Start Updating Heading") {
+                    vm.updatingHeadingToggle()
                 }
             }
             MapViewRepresentable(mapOtherUsers: $vm.mapOtherUsers, mapCurrentUser: $vm.mapCurrentUser, route: $vm.currentUserRoute)
@@ -84,6 +69,8 @@ class ViewModel: NSObject, ObservableObject {
     @Published var mapCurrentUser: User?
     @Published var currentUserRoute: [CLLocationCoordinate2D] = []
     
+    @Published var isStartUpdateHeading: Bool = false
+    
     let waypoints: [CLLocation]
     var userTimer: [String: Timer] = [:]
     
@@ -100,12 +87,23 @@ class ViewModel: NSObject, ObservableObject {
             .receive(on: DispatchQueue.main)
             .assign(to: \.mapOtherUsers, on: self)
         setupLocationManager()
+        
     }
     
     func setupLocationManager() {
         locationManager.delegate = self
         locationManager.requestWhenInUseAuthorization() // 請求使用使用者位置的許可權
         locationManager.startUpdatingLocation() // 開始更新使用者的位置
+    }
+    
+    func updatingHeadingToggle() {
+        isStartUpdateHeading.toggle()
+        switch isStartUpdateHeading {
+        case true:
+            locationManager.startUpdatingHeading()
+        case false:
+            locationManager.stopUpdatingLocation()
+        }
     }
     
     func removeUser(name: String) {
@@ -178,5 +176,20 @@ extension ViewModel: CLLocationManagerDelegate {
         print("---ViewModel didFailWithError---")
         print(error.localizedDescription)
         print("-------------------------------\n")
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
+        if newHeading.headingAccuracy < 0 { return }
+        
+        let heading = newHeading.trueHeading > 0 ? newHeading.trueHeading : newHeading.magneticHeading
+        let rotation = CGFloat(heading/180 * Double.pi)
+        print("----- LocationManager didUpdateHeading -----")
+        print("newHeading: \(newHeading)")
+        print("rotation: \(rotation)")
+        print("heading: ", heading)
+        print("newHeading.headingAccuracy:", newHeading.headingAccuracy)
+        print("newHeading.trueHeading: ", newHeading.trueHeading)
+        print("newHeading.magneticHeading: ", newHeading.magneticHeading)
+        print("--------------------------------------\n")
     }
 }
