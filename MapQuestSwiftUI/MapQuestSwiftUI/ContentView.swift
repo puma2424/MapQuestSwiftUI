@@ -102,7 +102,7 @@ class ViewModel: NSObject, ObservableObject {
         case true:
             locationManager.startUpdatingHeading()
         case false:
-            locationManager.stopUpdatingLocation()
+            locationManager.stopUpdatingHeading()
         }
     }
     
@@ -179,14 +179,11 @@ extension ViewModel: CLLocationManagerDelegate {
     }
     
     func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
+        mapCurrentUser?.heading = newHeading
         if newHeading.headingAccuracy < 0 { return }
         
-        let heading = newHeading.trueHeading > 0 ? newHeading.trueHeading : newHeading.magneticHeading
-        let rotation = CGFloat(heading/180 * Double.pi)
         print("----- LocationManager didUpdateHeading -----")
         print("newHeading: \(newHeading)")
-        print("rotation: \(rotation)")
-        print("heading: ", heading)
         print("newHeading.headingAccuracy:", newHeading.headingAccuracy)
         print("newHeading.trueHeading: ", newHeading.trueHeading)
         print("newHeading.magneticHeading: ", newHeading.magneticHeading)

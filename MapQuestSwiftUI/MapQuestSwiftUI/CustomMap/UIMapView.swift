@@ -115,37 +115,49 @@ class UIMapView: UIView {
         
         mapOtherUsersAnnotation.removeValue(forKey: name)
     }
+    
+    func changeUserHeading(newHeading: CLHeading?) {
+        mapCurrentUserAnnotation?.heading = newHeading
+    }
 }
 
 extension UIMapView: MKMapViewDelegate {
     func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
         guard let customAnnotation = annotation as? CustomPointAnnotation else { return nil }
-            var annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: "custom")
-            
-            if annotationView == nil {
-                print("--------------UIMapView------------")
-                print("🌁 Annotation: \(annotation)")
-                print("------------------------------------\n")
-                //Create View
-                annotationView = CustomAnnotationView(annotation: annotation, reuseIdentifier: "custom")
-                print("--------------UIMapView------------")
-                print("🌁 Annotation: \(annotation)")
-                if let view = annotationView as? CustomAnnotationView {
-                    print("🌁 Create Vire: \(view.nameLabel.text)")
-                }
-                print("------------------------------------\n")
-                
-            } else {
-                //Assign annotation
-                annotationView?.annotation = annotation
+        var annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: "custom")
+        
+        if annotationView == nil {
+            print("--------------UIMapView------------")
+            print("🌁 Annotation: \(annotation)")
+            print("------------------------------------\n")
+            //Create View
+            annotationView = CustomAnnotationView(annotation: annotation, reuseIdentifier: "custom")
+            print("--------------UIMapView------------")
+            print("🌁 Annotation: \(annotation)")
+            if let view = annotationView as? CustomAnnotationView {
+                print("🌁 Create Vire: \(view.nameLabel.text)")
             }
-            // 確保標註視圖的內容被更新
-            if let customView = annotationView as? CustomAnnotationView {
-                customView.updateContent(for: customAnnotation)
-            }
-            annotationView?.canShowCallout = true
+            print("------------------------------------\n")
             
-            return annotationView
+        } else {
+            //Assign annotation
+            annotationView?.annotation = annotation
+        }
+        // 確保標註視圖的內容被更新
+        if let customView = annotationView as? CustomAnnotationView {
+            customView.updateContent(for: customAnnotation)
+            // 設定 CustomAnnotationView ui
+            switch customAnnotation.role {
+            case .selfUser:
+                customView.headingDirection(isShow: true)
+            default:
+                customView.headingDirection(isShow: false)
+            }
+        }
+        annotationView?.canShowCallout = true
+        
+        
+        return annotationView
     }
     func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
             if let polyline = overlay as? MKPolyline {
@@ -193,6 +205,11 @@ struct MapViewRepresentable: UIViewRepresentable {
         uiView.centerMapOnLocation(coordinate: averageCoordinate)
     }
     
+    func setupHeadings(_ uiView: UIMapView) {
+        guard let mapCurrentUser else { return }
+        uiView.changeUserHeading(newHeading: mapCurrentUser.heading)
+    }
+    
     func setupOtherUsers(_ uiView: UIMapView) {
         guard !mapOtherUsers.isEmpty else { return }
         mapOtherUsers.forEach { (name, user) in
@@ -211,11 +228,13 @@ struct MapViewRepresentable: UIViewRepresentable {
     
     func setCurrentUser(_ uiView: UIMapView) {
         guard let mapCurrentUser else { return }
-        if let userAnnotation = uiView.mapCurrentUserAnnotation  {
+        if let userAnnotation = uiView.mapCurrentUserAnnotation {
             uiView.updateUserLocation(userAnnotation: userAnnotation, to: mapCurrentUser.location.coordinate)
         }else {
             uiView.addMapCurrentUser(customPointAnnotation: .init(user: mapCurrentUser))
         }
+        setupHeadings(uiView)
+        uiView.mapCurrentUserAnnotation?.role = .selfUser
     }
     
     

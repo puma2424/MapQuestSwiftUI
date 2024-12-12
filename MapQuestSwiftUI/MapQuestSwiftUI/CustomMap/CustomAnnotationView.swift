@@ -7,6 +7,7 @@
 
 import Foundation
 import MapKit
+import SwiftUI
 class CustomAnnotationView: MKAnnotationView {
     private(set) lazy var nameLabel: UILabel = {
         let label = UILabel()
@@ -21,14 +22,40 @@ class CustomAnnotationView: MKAnnotationView {
         return container
     }()
     
+    private(set) var headingDirectionView: UIView = {
+        let view = UIView()
+        view.backgroundColor = .red
+        return view
+    }()
+    
+    
     override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
         super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
         self.canShowCallout = true
         self.setupSubviews()
+        self.setupHeadingDirection()
+        guard let annotation = annotation as? CustomPointAnnotation else { return }
+        annotation.delegate = self
     }
     
     required init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
+    }
+    
+    func headingDirection(isShow: Bool) {
+        headingDirectionView.isHidden = !isShow
+    }
+    
+    func setupHeadingDirection() {
+        headingDirection(isShow: false)
+        addSubview(headingDirectionView)
+        headingDirectionView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            headingDirectionView.widthAnchor.constraint(equalToConstant: 3),
+            headingDirectionView.heightAnchor.constraint(equalToConstant: 10),
+            headingDirectionView.centerXAnchor.constraint(equalTo: self.centerXAnchor),
+            headingDirectionView.bottomAnchor.constraint(equalTo: self.topAnchor, constant: -20)
+        ])
     }
     
     private func setupSubviews() {
@@ -37,7 +64,7 @@ class CustomAnnotationView: MKAnnotationView {
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             nameLabel.centerXAnchor.constraint(equalTo: self.centerXAnchor),
-            nameLabel.bottomAnchor.constraint(equalTo: self.bottomAnchor, constant: 0)
+            nameLabel.bottomAnchor.constraint(equalTo: self.bottomAnchor, constant: 35)
         ])
         
         // 添加 imageContainerView
@@ -47,7 +74,7 @@ class CustomAnnotationView: MKAnnotationView {
             imageContainerView.widthAnchor.constraint(equalToConstant: 35),
             imageContainerView.heightAnchor.constraint(equalToConstant: 35),
             imageContainerView.centerXAnchor.constraint(equalTo: self.centerXAnchor),
-            imageContainerView.bottomAnchor.constraint(equalTo: nameLabel.topAnchor, constant: -5)
+            imageContainerView.centerYAnchor.constraint(equalTo: self.centerYAnchor)
         ])
     }
     
@@ -66,6 +93,25 @@ class CustomAnnotationView: MKAnnotationView {
     
     func updateContent(for annotation: CustomPointAnnotation) {
         setupUserImage(annotation: annotation)
+    }
+    
+    func updateHeadingRotation(rotation: CGFloat) {
+        headingDirectionView.transform = CGAffineTransform(rotationAngle: rotation)
+    }
+}
+
+extension CustomAnnotationView: CustomPointAnnotationDelegate {
+    func didChangeHeading(newHeading: CLHeading?) {
+        guard let userHeading = newHeading,
+              userHeading.headingAccuracy > 0 else {
+            headingDirection(isShow: false)
+            return
+        }
+        
+        let heading = userHeading.trueHeading > 0 ? userHeading.trueHeading : userHeading.magneticHeading
+        let rotation = CGFloat(heading/180 * Double.pi)
+        headingDirection(isShow: true)
+        updateHeadingRotation(rotation: rotation)
     }
 }
 
@@ -97,4 +143,22 @@ class ImageContainerView: UIView {
     func configure(userImage: UIImage) {
         imageView.image = userImage
     }
+}
+
+struct CustomAnnotationViewRepresentable: UIViewRepresentable {
+    
+    func makeUIView(context: Context) -> some UIView {
+        let view = CustomAnnotationView()
+        view.nameLabel.text = "Hello World"
+        view.imageContainerView.configure(userImage: UIImage.antita)
+        return view
+    }
+    
+    func updateUIView(_ uiView: UIViewType, context: Context) {
+        
+    }
+}
+#Preview {
+    CustomAnnotationViewRepresentable()
+            .frame(width: 200, height: 200) // 給定一個明確的框架大小
 }

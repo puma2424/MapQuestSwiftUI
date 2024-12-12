@@ -14,6 +14,7 @@ struct User {
     var image: UIImage?
     var location: CLLocation
     var walkingIndex: Int = 0
+    var heading: CLHeading?
 }
 
 class UserManager: ObservableObject {
@@ -23,7 +24,7 @@ class UserManager: ObservableObject {
     func addUser(_ user: User) {
         users[user.name] = user
     }
-    
+
     func removeUser(name: String) {
         guard let user = users[name] else { return }
         
