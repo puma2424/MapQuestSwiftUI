@@ -23,7 +23,7 @@ class UIMapView: UIView {
     var mapView: MKMapView!
     var mapOtherUsersAnnotation: [String: CustomPointAnnotation] = [:]
     var mapCurrentUserAnnotation: CustomPointAnnotation?
-    
+    var userTrackingMode: MKUserTrackingMode = .followWithHeading
     var mainRoute: [CLLocationCoordinate2D] = [] {
         didSet {
             updateRoute(mainRoute)
@@ -110,11 +110,6 @@ class UIMapView: UIView {
         })
     }
     
-    func centerMapOnLocation(coordinate: CLLocationCoordinate2D) {
-        let region = MKCoordinateRegion(center: coordinate, latitudinalMeters: 500, longitudinalMeters: 500)
-        mapView.setRegion(region, animated: true)
-    }
-    
     func removeAnnotation(name: String) {
         guard let userAnnotation = mapOtherUsersAnnotation[name] else { return }
         
@@ -132,6 +127,16 @@ class UIMapView: UIView {
         print("---UIMapView did Change User Tracking Mode---")
         print(userTrackingMode.rawValue)
         print("--------------------------------------\n")
+    }
+    
+    func centerMapOnLocation(coordinate: CLLocationCoordinate2D) {
+        let region = MKCoordinateRegion(center: coordinate, latitudinalMeters: 500, longitudinalMeters: 500)
+        mapView.setRegion(region, animated: true)
+    }
+    func rotateMap(to angle: CLLocationDirection, animated: Bool = true) {
+        var camera = mapView.camera
+        camera.heading = angle // 設置旋轉角度（0-360 度）
+        mapView.setCamera(camera, animated: animated)
     }
 }
 
@@ -264,6 +269,17 @@ struct MapViewRepresentable: UIViewRepresentable {
         }
         setupHeadings(uiView)
         uiView.mapCurrentUserAnnotation?.role = .selfUser
+        
+        switch userTrackingMode {
+        case .none:
+            return
+        case .follow:
+            uiView.centerMapOnLocation(coordinate: mapCurrentUser.location.coordinate)
+        case .followWithHeading:
+            uiView.centerMapOnLocation(coordinate: mapCurrentUser.location.coordinate)
+            guard let heading = mapCurrentUser.heading else { return }
+            uiView.rotateMap(to: heading.trueHeading)
+        }
     }
     
     
