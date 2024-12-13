@@ -31,12 +31,17 @@ struct ContentView: View {
                 }
                 
             }
+            .padding()
             HStack {
                 Button("Start Updating Heading") {
                     vm.updatingHeadingToggle()
                 }
+                Button("userTrackingMode: \(vm.userTrackingMode.rawValue)") {
+                    vm.userTrackingModeToggle()
+                }
             }
-            MapViewRepresentable(mapOtherUsers: $vm.mapOtherUsers, mapCurrentUser: $vm.mapCurrentUser, route: $vm.currentUserRoute)
+            .padding()
+            MapViewRepresentable(mapOtherUsers: $vm.mapOtherUsers, mapCurrentUser: $vm.mapCurrentUser, route: $vm.currentUserRoute, userTrackingMode: $vm.userTrackingMode)
         }
         .padding()
         .confirmationDialog(
@@ -69,6 +74,8 @@ class ViewModel: NSObject, ObservableObject {
     @Published var mapCurrentUser: User?
     @Published var currentUserRoute: [CLLocationCoordinate2D] = []
     
+    @Published var userTrackingMode: MKUserTrackingMode = .none
+    
     @Published var isStartUpdateHeading: Bool = false
     
     let waypoints: [CLLocation]
@@ -88,6 +95,10 @@ class ViewModel: NSObject, ObservableObject {
             .assign(to: \.mapOtherUsers, on: self)
         setupLocationManager()
         
+    }
+    
+    func userTrackingModeToggle() {
+        userTrackingMode = MKUserTrackingMode(rawValue: (userTrackingMode.rawValue + 1) % 3) ?? .none
     }
     
     func setupLocationManager() {

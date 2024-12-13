@@ -12,7 +12,14 @@ import CoreLocation
 import SwiftUI
 import Combine
 
+protocol UIMapViewDelegate: AnyObject {
+    func regionWillChangeAnimated()
+}
+
 class UIMapView: UIView {
+    
+    weak var delegate: UIMapViewDelegate?
+    
     var mapView: MKMapView!
     var mapOtherUsersAnnotation: [String: CustomPointAnnotation] = [:]
     var mapCurrentUserAnnotation: CustomPointAnnotation?
@@ -119,6 +126,13 @@ class UIMapView: UIView {
     func changeUserHeading(newHeading: CLHeading?) {
         mapCurrentUserAnnotation?.heading = newHeading
     }
+    
+    func didChange(userTrackingMode: MKUserTrackingMode) {
+        // TODO: - 變更追蹤模式後實現的邏輯
+        print("---UIMapView did Change User Tracking Mode---")
+        print(userTrackingMode.rawValue)
+        print("--------------------------------------\n")
+    }
 }
 
 extension UIMapView: MKMapViewDelegate {
@@ -160,15 +174,19 @@ extension UIMapView: MKMapViewDelegate {
         return annotationView
     }
     func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
-            if let polyline = overlay as? MKPolyline {
-                let renderer = MKPolylineRenderer(polyline: polyline)
-                renderer.strokeColor = .blue
-                renderer.lineWidth = 3
-                return renderer
-            }
-            return MKOverlayRenderer(overlay: overlay)
+        if let polyline = overlay as? MKPolyline {
+            let renderer = MKPolylineRenderer(polyline: polyline)
+            renderer.strokeColor = .blue
+            renderer.lineWidth = 3
+            return renderer
         }
+        return MKOverlayRenderer(overlay: overlay)
+    }
     
+    func mapView(_ mapView: MKMapView, regionWillChangeAnimated animated: Bool) {
+        // 偵測到使用者手動滑動地圖
+        delegate?.regionWillChangeAnimated()
+    }
 }
 
 struct MapViewRepresentable: UIViewRepresentable {
@@ -176,9 +194,11 @@ struct MapViewRepresentable: UIViewRepresentable {
     @Binding var mapOtherUsers: [String: User]
     @Binding var mapCurrentUser: User?
     @Binding var route: [CLLocationCoordinate2D]
+    @Binding var userTrackingMode: MKUserTrackingMode
     
     func makeUIView(context: Context) -> UIMapView {
         let uiMapView = UIMapView()
+        uiMapView.delegate = context.coordinator
         return uiMapView
     }
     
@@ -186,7 +206,16 @@ struct MapViewRepresentable: UIViewRepresentable {
         removeUser(uiView)
         setCurrentUser(uiView)
         setupOtherUsers(uiView)
+        didChangeUserTrackingMode(uiView)
         uiView.mainRoute = route
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+    
+    func didChangeUserTrackingMode(_ uiView: UIMapView) {
+        uiView.didChange(userTrackingMode: userTrackingMode)
     }
     
     func moveToOtherUsersCenter(_ uiView: UIMapView) {
@@ -259,13 +288,21 @@ struct MapViewRepresentable: UIViewRepresentable {
     }
 }
 
+extension MapViewRepresentable {
+    class Coordinator: NSObject, UIMapViewDelegate {
+        func regionWillChangeAnimated() {
+            // TODO: - 偵測到使用者手動滑動地圖
+        }
+    }
+}
+
     
 #Preview {
     @State var mapOtherUsers: [String : User] = ["aa": .init(name: "ya", location: .init(latitude: 25.059093026560458, longitude: 121.52061640290475), walkingIndex: 0)]
     @State var mapCurrentUser: User? = .init(name: "Puma", location: .init(latitude: 25.059093026560458, longitude: 121.52061640290475), walkingIndex: 0)
     @State var userRoute: [CLLocationCoordinate2D] = []
-    
-    MapViewRepresentable(mapOtherUsers: $mapOtherUsers, mapCurrentUser: $mapCurrentUser, route: $userRoute)
+    @State var userTrackingMode: MKUserTrackingMode = .followWithHeading
+    MapViewRepresentable(mapOtherUsers: $mapOtherUsers, mapCurrentUser: $mapCurrentUser, route: $userRoute, userTrackingMode: $userTrackingMode)
     
 }
 //25.059093026560458
